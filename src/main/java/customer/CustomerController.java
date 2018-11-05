@@ -124,5 +124,82 @@ public class CustomerController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error creating customer: " + ex.toString());
 		}
+
+	@RequestMapping(value = "/customer/search", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> searchCustomers(@RequestHeader Map<String, String> headers,
+			@RequestParam(required = true) String username) {
+		try {
+			if (username == null) {
+				return ResponseEntity.badRequest().body("Missing username");
+			}
+			final List<Customer> customers = cloudant
+					.findByIndex("{ \"selector\": {\"username\": \"" + username + "\" } }", Customer.class);
+			// query index
+			return ResponseEntity.ok(customers);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	@RequestMapping(value = "/customer", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> getCustomers(@RequestHeader Map<String, String> hdrs) {
+		try {
+			List<Customer> allCusts = cloudant.getAllDocsRequestBuilder().includeDocs(true).build().getResponse()
+					.getDocsAs(Customer.class);
+			return ResponseEntity.ok(allCusts);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
+	}
+
+	@RequestMapping(value = "/customer/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@RequestHeader Map<String, String> headers, @PathVariable String id) {
+		try {
+			final Customer cust = cloudant.find(Customer.class, id);
+			return ResponseEntity.ok(cust);
+		} catch (NoDocumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Customer with ID " + id + " not found");
+		}
+	}
+
+	@RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
+	ResponseEntity<?> create(@RequestHeader Map<String, String> headers, @RequestBody Customer payload) {
+		try {
+			if (payload.getCustomerId() != null && cloudant.contains(payload.getCustomerId())) {
+				return ResponseEntity.badRequest().body("Id " + payload.getCustomerId() + " already exists");
+			}
+			final List<Customer> customers = cloudant.findByIndex(
+					"{ \"selector\": {\"username\": \"" + payload.getUsername() + "\" } }", Customer.class);
+			if (!customers.isEmpty()) {
+				return ResponseEntity.badRequest()
+						.body("Customer with name" + payload.getUsername() + " already exists");
+			}
+			final Response resp = cloudant.save(payload);
+			if (resp.getError() == null) {
+				final URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
+						.buildAndExpand(resp.getId()).toUri();
+				return ResponseEntity.created(location).build();
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp.getError());
+			}
+		} catch (Exception ex) {
+			logger.error("Error creating customer: " + ex);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error creating customer: " + ex.toString());
+		}
+
+	}
+	@RequestMapping(value = "/items", method = RequestMethod.GET)
+	ResponseEntity<?> getInventory() {
+		return ResponseEntity.ok("[{\"id\":1,\"name\":\"one\"},{\"id\":2,\"name\":\"two\"}]");
+	}
+
+	@RequestMapping(value = "/items/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@PathVariable long id) {
+		return ResponseEntity.ok("{\"id\":1,\"name\":\"one\"}");
 	}
 }
