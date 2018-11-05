@@ -12,6 +12,7 @@ import java.util.Calendar;
 
 import javax.annotation.PostConstruct;
 
+import org.cts.com.domain.Customer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,60 +39,90 @@ import com.cloudant.client.org.lightcouch.NoDocumentException;
  */
 @RestController
 public class CustomerController {
-    
-    private static Logger logger =  LoggerFactory.getLogger(CustomerController.class);
-    
-    private Database cloudant;
-@Autowired
-private CloudantPropertiesBean cloudantProperties;
-@PostConstruct
-private void init() throws MalformedURLException {
-try {
-String cldUrl = cloudantProperties.getProtocol() + "://" +cloudantProperties.getHost() + ":" +cloudantProperties.getPort();
-logger.info("Connecting to cloudant at: " +cldUrl);
-final CloudantClient cloudantClient = ClientBuilder.url(new URL(cldUrl)).username(cloudantProperties.getUsername()).password(cloudantProperties.getPassword()).build();
-cloudant =cloudantClient.database(cloudantProperties.getDatabase(), true);
-} catch (MalformedURLException e) {
-logger.error(e.getMessage(), e);
-throw e;
-}
-}
-    
-    /**
-     * @return customer by username
-     */
-    @RequestMapping(value = "/customer/search", method = RequestMethod.GET)
-    @ResponseBody ResponseEntity<?> searchCustomers(@RequestHeader Map<String, String> headers, @RequestParam(required=true) String username) {
-        return  ResponseEntity.ok("[{\"user\":\"foo\"}]");
-    }
 
-    
+	private static Logger logger = LoggerFactory.getLogger(CustomerController.class);
 
-    /**
-     * @return all customer
-     */
-    @RequestMapping(value = "/customer", method = RequestMethod.GET)
-    @ResponseBody ResponseEntity<?> getCustomers(@RequestHeader Map<String, String> hdrs) {
-        return ResponseEntity.ok("[{\"user\":\"foo\"}]");
-        
-    }
+	private Database cloudant;
+	@Autowired
+	private CloudantPropertiesBean cloudantProperties;
 
-    /**
-     * @return customer by id
-     */
-    @RequestMapping(value = "/customer/{id}", method = RequestMethod.GET)
-    ResponseEntity<?> getById(@RequestHeader Map<String, String> headers, @PathVariable String id) {
-        return ResponseEntity.ok("{\"user\":\"foo\"}");
-    }
+	@PostConstruct
+	private void init() throws MalformedURLException {
+		try {
+			String cldUrl = cloudantProperties.getProtocol() + "://" + cloudantProperties.getHost() + ":"
+					+ cloudantProperties.getPort();
+			logger.info("Connecting to cloudant at: " + cldUrl);
+			final CloudantClient cloudantClient = ClientBuilder.url(new URL(cldUrl))
+					.username(cloudantProperties.getUsername()).password(cloudantProperties.getPassword()).build();
+			cloudant = cloudantClient.database(cloudantProperties.getDatabase(), true);
+		} catch (MalformedURLException e) {
+			logger.error(e.getMessage(), e);
+			throw e;
+		}
+	}
 
-    /**
-     * Add customer 
-     * @return transaction status
-     */
-    @RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
-    ResponseEntity<?> create(@RequestHeader Map<String, String> headers) {
-        return ResponseEntity.ok("{\"user\":\"foo\"}");
-    }
+	/**
+	 * @return customer by username
+	 */
+	@RequestMapping(value = "/customer/search", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> searchCustomers(@RequestHeader Map<String, String> headers,
+			@RequestParam(required = true) String username) {
+		final List<Customer> customers = cloudant.findByIndex("{ \"selector\": {\"username\": \"" + username + "\" } }",
+				Customer.class);
+		return ResponseEntity.ok(customers);
+	}
 
+	/**
+	 * @return all customer
+	 */
+	@RequestMapping(value = "/customer", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> getCustomers(@RequestHeader Map<String, String> hdrs) {
+		List<Customer> allCusts = cloudant.getAllDocsRequestBuilder().includeDocs(true).build().getResponse()
+				.getDocsAs(Customer.class);
+		return ResponseEntity.ok(allCusts);
 
+	}
+
+	/**
+	 * @return customer by id
+	 */
+	@RequestMapping(value = "/customer/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@RequestHeader Map<String, String> headers, @PathVariable String id) {
+		final Customer cust = cloudant.find(Customer.class, id);
+		return ResponseEntity.ok(cust);
+	}
+
+	/**
+	 * Add customer
+	 * 
+	 * @return transaction status
+	 */
+	@RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
+	ResponseEntity<?> create(@RequestHeader Map<String, String> headers) {
+		try {
+			if (payload.getCustomerId() != null && cloudant.contains(payload.getCustomerId())) {
+				return ResponseEntity.badRequest().body("Id " + payload.getCustomerId() + " already exists");
+			}
+			final List<Customer> customers = cloudant.findByIndex(
+					"{ \"selector\": {\"username\": \"" + payload.getUsername() + "\" } }", Customer.class);
+			if (!customers.isEmpty()) {
+				return ResponseEntity.badRequest()
+						.body("Customer with name" + payload.getUsername() + " already exists");
+			}
+			final Response resp = cloudant.save(payload);
+			if (resp.getError() == null) {
+				final URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
+						.buildAndExpand(resp.getId()).toUri();
+				return ResponseEntity.created(location).build();
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp.getError());
+			}
+		} catch (Exception ex) {
+			logger.error("Error creating customer: " + ex);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error creating customer: " + ex.toString());
+		}
+	}
 }
