@@ -12,7 +12,6 @@ import java.util.Calendar;
 
 import javax.annotation.PostConstruct;
 
-import org.cts.com.domain.Customer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -127,44 +126,47 @@ public class CustomerController {
 		}
 =======
 
-	/**
-	 * @return customer by username
-	 */
 	@RequestMapping(value = "/customer/search", method = RequestMethod.GET)
 	@ResponseBody
 	ResponseEntity<?> searchCustomers(@RequestHeader Map<String, String> headers,
 			@RequestParam(required = true) String username) {
-		final List<Customer> customers = cloudant.findByIndex("{ \"selector\": {\"username\": \"" + username + "\" } }",
-				Customer.class);
-		return ResponseEntity.ok(customers);
+		try {
+			if (username == null) {
+				return ResponseEntity.badRequest().body("Missing username");
+			}
+			final List<Customer> customers = cloudant
+					.findByIndex("{ \"selector\": {\"username\": \"" + username + "\" } }", Customer.class);
+			// query index
+			return ResponseEntity.ok(customers);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 
-	/**
-	 * @return all customer
-	 */
 	@RequestMapping(value = "/customer", method = RequestMethod.GET)
 	@ResponseBody
 	ResponseEntity<?> getCustomers(@RequestHeader Map<String, String> hdrs) {
-		List<Customer> allCusts = cloudant.getAllDocsRequestBuilder().includeDocs(true).build().getResponse()
-				.getDocsAs(Customer.class);
-		return ResponseEntity.ok(allCusts);
-
+		try {
+			List<Customer> allCusts = cloudant.getAllDocsRequestBuilder().includeDocs(true).build().getResponse()
+					.getDocsAs(Customer.class);
+			return ResponseEntity.ok(allCusts);
+		} catch (Exception e) {
+			logger.error(e.getMessage(), e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+		}
 	}
 
-	/**
-	 * @return customer by id
-	 */
 	@RequestMapping(value = "/customer/{id}", method = RequestMethod.GET)
 	ResponseEntity<?> getById(@RequestHeader Map<String, String> headers, @PathVariable String id) {
-		final Customer cust = cloudant.find(Customer.class, id);
-		return ResponseEntity.ok(cust);
+		try {
+			final Customer cust = cloudant.find(Customer.class, id);
+			return ResponseEntity.ok(cust);
+		} catch (NoDocumentException e) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Customer with ID " + id + " not found");
+		}
 	}
 
-	/**
-	 * Add customer
-	 * 
-	 * @return transaction status
-	 */
 	@RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
 	ResponseEntity<?> create(@RequestHeader Map<String, String> headers, @RequestBody Customer payload) {
 		try {
@@ -190,6 +192,7 @@ public class CustomerController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error creating customer: " + ex.toString());
 		}
+
 	}
 	@RequestMapping(value = "/items", method = RequestMethod.GET)
 	ResponseEntity<?> getInventory() {
