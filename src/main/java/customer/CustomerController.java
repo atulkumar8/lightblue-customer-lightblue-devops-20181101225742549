@@ -26,6 +26,11 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import com.cloudant.client.api.ClientBuilder;
+import com.cloudant.client.api.CloudantClient;
+import com.cloudant.client.api.Database;
+import com.cloudant.client.api.model.Response;
+import com.cloudant.client.org.lightcouch.NoDocumentException;
 
 /**
  * REST Controller to manage Customer database
@@ -35,6 +40,22 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 public class CustomerController {
     
     private static Logger logger =  LoggerFactory.getLogger(CustomerController.class);
+    
+    private Database cloudant;
+@Autowired
+private CloudantPropertiesBean cloudantProperties;
+@PostConstruct
+private void init() throws MalformedURLException {
+try {
+String cldUrl = cloudantProperties.getProtocol() + "://" +cloudantProperties.getHost() + ":" +cloudantProperties.getPort();
+logger.info("Connecting to cloudant at: " +cldUrl);
+final CloudantClient cloudantClient = ClientBuilder.url(new URL(cldUrl)).username(cloudantProperties.getUsername()).password(cloudantProperties.getPassword()).build();
+cloudant =cloudantClient.database(cloudantProperties.getDatabase(), true);
+} catch (MalformedURLException e) {
+logger.error(e.getMessage(), e);
+throw e;
+}
+}
     
     /**
      * @return customer by username
