@@ -100,7 +100,7 @@ public class CustomerController {
 	 * @return transaction status
 	 */
 	@RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
-	ResponseEntity<?> create(@RequestHeader Map<String, String> headers) {
+	ResponseEntity<?> create(@RequestHeader Map<String, String> headers, @RequestBody Customer payload) {
 		try {
 			if (payload.getCustomerId() != null && cloudant.contains(payload.getCustomerId())) {
 				return ResponseEntity.badRequest().body("Id " + payload.getCustomerId() + " already exists");
@@ -124,5 +124,14 @@ public class CustomerController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error creating customer: " + ex.toString());
 		}
+	}
+	@RequestMapping(value = "/items", method = RequestMethod.GET)
+	ResponseEntity<?> getInventory() {
+		return ResponseEntity.ok("[{\"id\":1,\"name\":\"one\"},{\"id\":2,\"name\":\"two\"}]");
+	}
+
+	@RequestMapping(value = "/items/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@PathVariable long id) {
+		return ResponseEntity.ok("{\"id\":1,\"name\":\"one\"}");
 	}
 }
