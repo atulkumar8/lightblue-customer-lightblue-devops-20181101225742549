@@ -60,6 +60,7 @@ public class CustomerController {
 			throw e;
 		}
 	}
+<<<<<<< HEAD
 
 	/**
 	 * @return customer by username
@@ -124,5 +125,80 @@ public class CustomerController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error creating customer: " + ex.toString());
 		}
+=======
+
+	/**
+	 * @return customer by username
+	 */
+	@RequestMapping(value = "/customer/search", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> searchCustomers(@RequestHeader Map<String, String> headers,
+			@RequestParam(required = true) String username) {
+		final List<Customer> customers = cloudant.findByIndex("{ \"selector\": {\"username\": \"" + username + "\" } }",
+				Customer.class);
+		return ResponseEntity.ok(customers);
+	}
+
+	/**
+	 * @return all customer
+	 */
+	@RequestMapping(value = "/customer", method = RequestMethod.GET)
+	@ResponseBody
+	ResponseEntity<?> getCustomers(@RequestHeader Map<String, String> hdrs) {
+		List<Customer> allCusts = cloudant.getAllDocsRequestBuilder().includeDocs(true).build().getResponse()
+				.getDocsAs(Customer.class);
+		return ResponseEntity.ok(allCusts);
+
+	}
+
+	/**
+	 * @return customer by id
+	 */
+	@RequestMapping(value = "/customer/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@RequestHeader Map<String, String> headers, @PathVariable String id) {
+		final Customer cust = cloudant.find(Customer.class, id);
+		return ResponseEntity.ok(cust);
+	}
+
+	/**
+	 * Add customer
+	 * 
+	 * @return transaction status
+	 */
+	@RequestMapping(value = "/customer", method = RequestMethod.POST, consumes = "application/json")
+	ResponseEntity<?> create(@RequestHeader Map<String, String> headers, @RequestBody Customer payload) {
+		try {
+			if (payload.getCustomerId() != null && cloudant.contains(payload.getCustomerId())) {
+				return ResponseEntity.badRequest().body("Id " + payload.getCustomerId() + " already exists");
+			}
+			final List<Customer> customers = cloudant.findByIndex(
+					"{ \"selector\": {\"username\": \"" + payload.getUsername() + "\" } }", Customer.class);
+			if (!customers.isEmpty()) {
+				return ResponseEntity.badRequest()
+						.body("Customer with name" + payload.getUsername() + " already exists");
+			}
+			final Response resp = cloudant.save(payload);
+			if (resp.getError() == null) {
+				final URI location = ServletUriComponentsBuilder.fromCurrentRequest().path("/{id}")
+						.buildAndExpand(resp.getId()).toUri();
+				return ResponseEntity.created(location).build();
+			} else {
+				return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(resp.getError());
+			}
+		} catch (Exception ex) {
+			logger.error("Error creating customer: " + ex);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error creating customer: " + ex.toString());
+		}
+	}
+	@RequestMapping(value = "/items", method = RequestMethod.GET)
+	ResponseEntity<?> getInventory() {
+		return ResponseEntity.ok("[{\"id\":1,\"name\":\"one\"},{\"id\":2,\"name\":\"two\"}]");
+	}
+
+	@RequestMapping(value = "/items/{id}", method = RequestMethod.GET)
+	ResponseEntity<?> getById(@PathVariable long id) {
+		return ResponseEntity.ok("{\"id\":1,\"name\":\"one\"}");
+>>>>>>> 9eac6eeade8c100254fafe566ee5f192e2894db9
 	}
 }
