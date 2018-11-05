@@ -1,0 +1,13 @@
+server:
+  context-path: /micro
+  port: 8080
+spring:
+  cloudant:
+    username: ${vcap.services.lightblue-cloudant.credentials.username}
+    password: ${vcap.services.lightblue-cloudant.credentials.password}
+    host: ${vcap.services.lightblue-cloudant.credentials.host}
+    protocol: https
+    port: 443
+    database: customers
+services:
+ - lightblue-cloudant
