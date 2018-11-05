@@ -3,12 +3,8 @@ package customer;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
-import java.util.Calendar;
 
 import javax.annotation.PostConstruct;
 
@@ -126,8 +122,8 @@ public class CustomerController {
 			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
 					.body("Error creating customer: " + ex.toString());
 		}
-
 	}
+
 	@RequestMapping(value = "/items", method = RequestMethod.GET)
 	ResponseEntity<?> getInventory() {
 		return ResponseEntity.ok("[{\"id\":1,\"name\":\"one\"},{\"id\":2,\"name\":\"two\"}]");
