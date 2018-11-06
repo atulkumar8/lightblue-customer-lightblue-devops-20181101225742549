@@ -1,7 +1,7 @@
 applications:
 - name: lightblue-customer-atul
   host: lightblue-customer-atul
-  buildpack: liberty-for-java
+  buildpack: liberty-for-java_v3_26-20181023-1545
   path: target/CTS-0.0.1-SNAPSHOT.jar
   memory: 256M
   disk_quota: 1024M
