@@ -9,10 +9,3 @@ applications:
   domain: mybluemix.net
   services:
     - lightblue-cloudant
-env:
-  JAVA_ENV: dev
-  SPRING_PROFILES_ACTIVE: dev
-  JBP_CONFIG_SPRINGAUTORECONFIGURATION: 'enabled: false'
-  APPLICATION_ENV: dev
-  APP_BUILD_VERSION: 1.0
-  LOGLEVEL: DEBUG
