@@ -1,6 +1,5 @@
 server:
   context-path: /micro
-  port: 8080
 spring:
   cloudant:
     username: ${vcap.services.lightblue-cloudant.credentials.username:c7f097a9-1b39-44b2-b79b-2ae6e8be8140-bluemix}
